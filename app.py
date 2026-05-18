@@ -1,10 +1,12 @@
-
 import streamlit as st
 import cv2
 import numpy as np
 import tempfile
 import os
 import base64
+import imageio
+
+st.set_page_config(page_title="DRS System", layout="wide")
 
 def add_bg_image():
     with open("cri.jfif", "rb") as f:
@@ -17,15 +19,13 @@ def add_bg_image():
         background-position: center;
         background-repeat: no-repeat;
     }}
-    h1 {{
-        color: yellow !important;
-        text-shadow: 2px 2px 4px black;
-    }}
+    h1 {{ color: yellow !important; text-shadow: 2px 2px 4px black; }}
     </style>
     """, unsafe_allow_html=True)
-st.set_page_config(page_title="DRS System", layout="wide")
-st.title("🏏 HAWKEYE DRS SYSTEM")
+
 add_bg_image()
+st.title("🏏 HAWKEYE DRS SYSTEM")
+
 st.sidebar.header("Settings")
 ball_color = st.sidebar.radio("Ball Color:", ["Red Ball", "White Ball"])
 stump_x = st.sidebar.slider("Stumps X", 100, 700, 350)
@@ -155,34 +155,24 @@ if uploaded is not None:
         st.success("# ✅ NOT OUT!")
 
     if key_frames:
+        st.subheader("🎬 Ball Tracking")
         cols = st.columns(3)
         for i, col in enumerate(cols):
             if i < len(key_frames):
                 idx = i*(len(key_frames)//3)
                 col.image(key_frames[idx], use_container_width=True)
-# Slow motion section
-st.markdown("---")
-st.subheader("🎬 Slow Motion Replay")
 
-if key_frames:
-    slow_speed = st.slider("Slow Motion Speed", 1, 10, 3)
-    
-    # Slow motion GIF বানাই
-    import imageio
-    import tempfile
-    
-    gif_path = tempfile.NamedTemporaryFile(delete=False, suffix=".gif")
-    
-    # Key frames কে slow করি
-    slow_frames = []
-    for f in key_frames:
-        for _ in range(slow_speed):
-            slow_frames.append(f)
-    
-    imageio.mimsave(gif_path.name, slow_frames, fps=10)
-    
-    with open(gif_path.name, "rb") as f:
-        gif_data = f.read()
-    
-    st.image(gif_data, caption="Slow Motion Replay", use_container_width=True)
-    os.unlink(gif_path.name)
+        # Slow Motion
+        st.markdown("---")
+        st.subheader("🎬 Slow Motion Replay")
+        slow_speed = st.slider("Slow Motion Speed", 1, 10, 3)
+        slow_frames = []
+        for f in key_frames:
+            for _ in range(slow_speed):
+                slow_frames.append(f)
+        gif_path = tempfile.NamedTemporaryFile(delete=False, suffix=".gif")
+        imageio.mimsave(gif_path.name, slow_frames, fps=10)
+        with open(gif_path.name, "rb") as f:
+            gif_data = f.read()
+        st.image(gif_data, caption="Slow Motion Replay", use_container_width=True)
+        os.unlink(gif_path.name)
