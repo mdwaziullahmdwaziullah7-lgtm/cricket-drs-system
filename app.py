@@ -41,6 +41,48 @@ def draw_3d_stumps(frame, stump_x, stump_y1, stump_y2):
     return frame
 
 add_bg_image()
+st.markdown("""
+<style>
+/* Mobile friendly */
+@media (max-width: 768px) {
+    .stApp { padding: 0px; }
+    h1 { font-size: 1.5em !important; }
+    .stButton button { width: 100%; font-size: 1.2em; padding: 15px; }
+    .stSlider { width: 100%; }
+    .stFileUploader { width: 100%; }
+    .stMetric { font-size: 0.8em; }
+}
+
+/* General style */
+.stButton button {
+    background: linear-gradient(45deg, #1a6b1a, #2da82d);
+    color: white;
+    border: none;
+    border-radius: 10px;
+    font-weight: bold;
+}
+.uploadedFile {
+    background: rgba(0,0,0,0.5) !important;
+    color: white !important;
+    border-radius: 10px;
+}
+.stProgress > div > div {
+    background: linear-gradient(45deg, #ff4444, #ff8800);
+}
+section[data-testid="stSidebar"] {
+    background: rgba(0,0,0,0.7) !important;
+}
+section[data-testid="stSidebar"] * {
+    color: white !important;
+}
+.stMetric {
+    background: rgba(0,0,0,0.6);
+    border-radius: 10px;
+    padding: 10px;
+    border: 1px solid rgba(255,255,255,0.2);
+}
+</style>
+""", unsafe_allow_html=True)
 st.title("🏏 HAWKEYE DRS SYSTEM")
 
 st.sidebar.header("Settings")
