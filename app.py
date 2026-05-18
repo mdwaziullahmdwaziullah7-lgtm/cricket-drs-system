@@ -40,10 +40,52 @@ def draw_3d_stumps(frame, stump_x, stump_y1, stump_y2):
     cv2.ellipse(frame, (stump_x, stump_y2+5), (30,8), 0, 0, 180, (100,80,50), -1)
     return frame
 
+def ai_detect_ball(frame, prev_frame=None):
+    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    blur = cv2.GaussianBlur(gray, (11,11), 0)
+    hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+
+    m1 = cv2.inRange(hsv, np.array([0,80,80]), np.array([15,255,255]))
+    m2 = cv2.inRange(hsv, np.array([160,80,80]), np.array([180,255,255]))
+    m3 = cv2.inRange(hsv, np.array([0,0,180]), np.array([180,40,255]))
+    color_mask = cv2.bitwise_or(cv2.bitwise_or(m1, m2), m3)
+
+    if prev_frame is not None:
+        prev_gray = cv2.cvtColor(prev_frame, cv2.COLOR_BGR2GRAY)
+        prev_blur = cv2.GaussianBlur(prev_gray, (11,11), 0)
+        diff = cv2.absdiff(blur, prev_blur)
+        _, motion_mask = cv2.threshold(diff, 25, 255, cv2.THRESH_BINARY)
+        combined = cv2.bitwise_or(color_mask, motion_mask)
+    else:
+        combined = color_mask
+
+    k = np.ones((3,3), np.uint8)
+    combined = cv2.morphologyEx(combined, cv2.MORPH_OPEN, k)
+    combined = cv2.morphologyEx(combined, cv2.MORPH_CLOSE, k)
+
+    contours, _ = cv2.findContours(
+        combined, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+    ball_candidates = []
+    for c in contours:
+        area = cv2.contourArea(c)
+        if 20 < area < 2000:
+            (x, y, w, h) = cv2.boundingRect(c)
+            aspect = w/max(h,1)
+            if 0.5 <= aspect <= 2.0:
+                cx, cy = x+w//2, y+h//2
+                confidence = min(100, int(area/10))
+                ball_candidates.append((cx, cy, confidence))
+
+    if ball_candidates:
+        ball_candidates.sort(key=lambda x: x[2], reverse=True)
+        return ball_candidates[0]
+    return None
+
 add_bg_image()
+
 st.markdown("""
 <style>
-/* Mobile friendly */
 @media (max-width: 768px) {
     .stApp { padding: 0px; }
     h1 { font-size: 1.5em !important; }
@@ -52,19 +94,10 @@ st.markdown("""
     .stFileUploader { width: 100%; }
     .stMetric { font-size: 0.8em; }
 }
-
-/* General style */
 .stButton button {
     background: linear-gradient(45deg, #1a6b1a, #2da82d);
-    color: white;
-    border: none;
-    border-radius: 10px;
-    font-weight: bold;
-}
-.uploadedFile {
-    background: rgba(0,0,0,0.5) !important;
-    color: white !important;
-    border-radius: 10px;
+    color: white; border: none;
+    border-radius: 10px; font-weight: bold;
 }
 .stProgress > div > div {
     background: linear-gradient(45deg, #ff4444, #ff8800);
@@ -77,12 +110,12 @@ section[data-testid="stSidebar"] * {
 }
 .stMetric {
     background: rgba(0,0,0,0.6);
-    border-radius: 10px;
-    padding: 10px;
+    border-radius: 10px; padding: 10px;
     border: 1px solid rgba(255,255,255,0.2);
 }
 </style>
 """, unsafe_allow_html=True)
+
 st.title("🏏 HAWKEYE DRS SYSTEM")
 
 st.sidebar.header("Settings")
@@ -99,7 +132,7 @@ if uploaded is not None:
     tfile.write(uploaded.read())
     tfile.close()
 
-    st.success("Analyzing...")
+    st.success("🤖 AI Analyzing...")
     cap = cv2.VideoCapture(tfile.name)
     trail = []
     pitch_point = None
@@ -111,6 +144,7 @@ if uploaded is not None:
     total = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
     progress = st.progress(0)
     count = 0
+    prev_frame = None
 
     while True:
         ret, frame = cap.read()
@@ -119,51 +153,39 @@ if uploaded is not None:
         count += 1
         progress.progress(min(count/total, 1.0))
         frame = cv2.resize(frame, (720, 480))
-        hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
-
-        if "Red" in ball_color:
-            m1 = cv2.inRange(hsv, np.array([0,80,80]), np.array([15,255,255]))
-            m2 = cv2.inRange(hsv, np.array([160,80,80]), np.array([180,255,255]))
-            mask = cv2.bitwise_or(m1, m2)
-        else:
-            mask = cv2.inRange(hsv, np.array([0,0,180]), np.array([180,40,255]))
-
-        k = np.ones((3,3), np.uint8)
-        mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, k)
-        mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, k)
-        contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
         frame = draw_3d_stumps(frame, stump_x, stump_y1, stump_y2)
 
+        ball = ai_detect_ball(frame, prev_frame)
         ball_found = False
-        for c in contours:
-            if cv2.contourArea(c) > sensitivity:
-                (bx, by, bw, bh) = cv2.boundingRect(c)
-                if 0.4 <= bw/max(bh,1) <= 2.5:
-                    cx, cy = bx+bw//2, by+bh//2
-                    trail.append((cx, cy))
-                    ball_found = True
-                    if len(trail) > 60:
-                        trail.pop(0)
-                    if len(trail) == 6:
-                        pitch_point = (cx, cy)
-                    if len(trail) == 18:
-                        impact_point = (cx, cy)
-                    if len(trail) >= 6:
-                        last = trail[-1]
-                        prev = trail[-3]
-                        dx = last[0]-prev[0]
-                        dy = last[1]-prev[1]
-                        predicted = []
-                        for s in range(1, 12):
-                            px = int(last[0]+dx*s)
-                            py = int(last[1]+dy*s)
-                            if 0 <= px < 720 and 0 <= py < 480:
-                                predicted.append((px, py))
-                    for i in range(1, len(trail)):
-                        cv2.line(frame, trail[i-1], trail[i], (0,220,255), 2)
-                    cv2.circle(frame, (cx, cy), 14, (0,180,255), -1)
-                    break
+
+        if ball:
+            cx, cy, confidence = ball
+            ball_found = True
+            trail.append((cx, cy))
+            if len(trail) > 60:
+                trail.pop(0)
+            if len(trail) == 6:
+                pitch_point = (cx, cy)
+            if len(trail) == 18:
+                impact_point = (cx, cy)
+            if len(trail) >= 6:
+                last = trail[-1]
+                prev = trail[-3]
+                dx = last[0]-prev[0]
+                dy = last[1]-prev[1]
+                predicted = []
+                for s in range(1, 12):
+                    px = int(last[0]+dx*s)
+                    py = int(last[1]+dy*s)
+                    if 0 <= px < 720 and 0 <= py < 480:
+                        predicted.append((px, py))
+            for i in range(1, len(trail)):
+                cv2.line(frame, trail[i-1], trail[i], (0,220,255), 2)
+            cv2.circle(frame, (cx,cy), 14, (0,180,255), -1)
+            cv2.putText(frame, "AI:"+str(confidence)+"%",
+                (cx+15, cy-10), cv2.FONT_HERSHEY_SIMPLEX,
+                0.6, (0,255,255), 2)
 
         if pitch_point:
             cv2.circle(frame, pitch_point, 12, (0,255,255), -1)
@@ -202,6 +224,8 @@ if uploaded is not None:
 
         if count % 6 == 0 and ball_found:
             key_frames.append(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
+
+        prev_frame = frame.copy()
 
     cap.release()
     os.unlink(tfile.name)
