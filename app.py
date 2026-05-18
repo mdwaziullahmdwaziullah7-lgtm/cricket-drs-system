@@ -160,3 +160,29 @@ if uploaded is not None:
             if i < len(key_frames):
                 idx = i*(len(key_frames)//3)
                 col.image(key_frames[idx], use_container_width=True)
+# Slow motion section
+st.markdown("---")
+st.subheader("🎬 Slow Motion Replay")
+
+if key_frames:
+    slow_speed = st.slider("Slow Motion Speed", 1, 10, 3)
+    
+    # Slow motion GIF বানাই
+    import imageio
+    import tempfile
+    
+    gif_path = tempfile.NamedTemporaryFile(delete=False, suffix=".gif")
+    
+    # Key frames কে slow করি
+    slow_frames = []
+    for f in key_frames:
+        for _ in range(slow_speed):
+            slow_frames.append(f)
+    
+    imageio.mimsave(gif_path.name, slow_frames, fps=10)
+    
+    with open(gif_path.name, "rb") as f:
+        gif_data = f.read()
+    
+    st.image(gif_data, caption="Slow Motion Replay", use_container_width=True)
+    os.unlink(gif_path.name)
