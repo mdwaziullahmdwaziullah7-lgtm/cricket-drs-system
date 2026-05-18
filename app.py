@@ -23,6 +23,23 @@ def add_bg_image():
     </style>
     """, unsafe_allow_html=True)
 
+def draw_3d_stumps(frame, stump_x, stump_y1, stump_y2):
+    shadow_offset = 8
+    for sx in [stump_x-18, stump_x, stump_x+18]:
+        cv2.line(frame,
+                (sx+shadow_offset, stump_y1+shadow_offset),
+                (sx+shadow_offset, stump_y2+shadow_offset),
+                (50,50,50), 6)
+    for sx in [stump_x-18, stump_x, stump_x+18]:
+        cv2.line(frame, (sx, stump_y1), (sx, stump_y2), (255,255,255), 5)
+        cv2.line(frame, (sx-2, stump_y1), (sx-2, stump_y2), (200,200,255), 2)
+    cv2.line(frame, (stump_x-22, stump_y1),
+             (stump_x+22, stump_y1), (255,220,100), 4)
+    cv2.line(frame, (stump_x-20+shadow_offset, stump_y1+shadow_offset),
+             (stump_x+20+shadow_offset, stump_y1+shadow_offset), (50,50,50), 3)
+    cv2.ellipse(frame, (stump_x, stump_y2+5), (30,8), 0, 0, 180, (100,80,50), -1)
+    return frame
+
 add_bg_image()
 st.title("🏏 HAWKEYE DRS SYSTEM")
 
@@ -74,8 +91,7 @@ if uploaded is not None:
         mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, k)
         contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
-        for sx in [stump_x-18, stump_x, stump_x+18]:
-            cv2.line(frame, (sx, stump_y1), (sx, stump_y2), (255,255,255), 4)
+        frame = draw_3d_stumps(frame, stump_x, stump_y1, stump_y2)
 
         ball_found = False
         for c in contours:
