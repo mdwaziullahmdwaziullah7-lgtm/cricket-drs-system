@@ -4,10 +4,28 @@ import cv2
 import numpy as np
 import tempfile
 import os
+import base64
 
+def add_bg_image():
+    with open("cri.jfif", "rb") as f:
+        data = base64.b64encode(f.read()).decode()
+    st.markdown(f"""
+    <style>
+    .stApp {{
+        background-image: url("data:image/jpeg;base64,{data}");
+        background-size: cover;
+        background-position: center;
+        background-repeat: no-repeat;
+    }}
+    h1 {{
+        color: yellow !important;
+        text-shadow: 2px 2px 4px black;
+    }}
+    </style>
+    """, unsafe_allow_html=True)
 st.set_page_config(page_title="DRS System", layout="wide")
 st.title("🏏 HAWKEYE DRS SYSTEM")
-
+add_bg_image()
 st.sidebar.header("Settings")
 ball_color = st.sidebar.radio("Ball Color:", ["Red Ball", "White Ball"])
 stump_x = st.sidebar.slider("Stumps X", 100, 700, 350)
