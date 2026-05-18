@@ -59,7 +59,7 @@ if uploaded is not None:
             break
         count += 1
         progress.progress(min(count/total, 1.0))
-        frame = cv2.resize(frame, (720,480))
+        frame = cv2.resize(frame, (720, 480))
         hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
 
         if "Red" in ball_color:
@@ -75,45 +75,48 @@ if uploaded is not None:
         contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
         for sx in [stump_x-18, stump_x, stump_x+18]:
-            cv2.line(frame, (sx,stump_y1), (sx,stump_y2), (255,255,255), 4)
+            cv2.line(frame, (sx, stump_y1), (sx, stump_y2), (255,255,255), 4)
 
         ball_found = False
         for c in contours:
             if cv2.contourArea(c) > sensitivity:
-                (bx,by,bw,bh) = cv2.boundingRect(c)
+                (bx, by, bw, bh) = cv2.boundingRect(c)
                 if 0.4 <= bw/max(bh,1) <= 2.5:
-                    cx,cy = bx+bw//2, by+bh//2
-                    trail.append((cx,cy))
+                    cx, cy = bx+bw//2, by+bh//2
+                    trail.append((cx, cy))
                     ball_found = True
                     if len(trail) > 60:
                         trail.pop(0)
                     if len(trail) == 6:
-                        pitch_point = (cx,cy)
+                        pitch_point = (cx, cy)
                     if len(trail) == 18:
-                        impact_point = (cx,cy)
+                        impact_point = (cx, cy)
                     if len(trail) >= 6:
                         last = trail[-1]
                         prev = trail[-3]
                         dx = last[0]-prev[0]
                         dy = last[1]-prev[1]
                         predicted = []
-                        for s in range(1,12):
-                            px,py = int(last[0]+dx*s), int(last[1]+dy*s)
-                            if 0<=px<720 and 0<=py<480:
-                                predicted.append((px,py))
+                        for s in range(1, 12):
+                            px = int(last[0]+dx*s)
+                            py = int(last[1]+dy*s)
+                            if 0 <= px < 720 and 0 <= py < 480:
+                                predicted.append((px, py))
                     for i in range(1, len(trail)):
                         cv2.line(frame, trail[i-1], trail[i], (0,220,255), 2)
-                    cv2.circle(frame, (cx,cy), 14, (0,180,255), -1)
+                    cv2.circle(frame, (cx, cy), 14, (0,180,255), -1)
                     break
 
         if pitch_point:
             cv2.circle(frame, pitch_point, 12, (0,255,255), -1)
-            cv2.putText(frame, "PITCH", (pitch_point[0]+14, pitch_point[1]+5),
+            cv2.putText(frame, "PITCH",
+                (pitch_point[0]+14, pitch_point[1]+5),
                 cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0,255,255), 2)
 
         if impact_point:
             cv2.circle(frame, impact_point, 14, (0,0,255), -1)
-            cv2.putText(frame, "IMPACT", (impact_point[0]+14, impact_point[1]+5),
+            cv2.putText(frame, "IMPACT",
+                (impact_point[0]+14, impact_point[1]+5),
                 cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0,50,255), 2)
 
         if predicted:
@@ -122,8 +125,10 @@ if uploaded is not None:
             for pt in predicted:
                 cv2.circle(frame, pt, 5, (0,255,0), -1)
 
-        hitting = any(stump_x-32 <= pt[0] <= stump_x+32 and
-                     stump_y1 <= pt[1] <= stump_y2 for pt in predicted)
+        hitting = any(
+            stump_x-32 <= pt[0] <= stump_x+32 and
+            stump_y1 <= pt[1] <= stump_y2
+            for pt in predicted)
 
         if ball_found:
             if hitting:
@@ -144,7 +149,7 @@ if uploaded is not None:
     os.unlink(tfile.name)
 
     st.markdown("---")
-    c1,c2,c3 = st.columns(3)
+    c1, c2, c3 = st.columns(3)
     c1.metric("Total Frames", total)
     c2.metric("OUT", out_count)
     c3.metric("NOT OUT", not_out_count)
@@ -160,9 +165,8 @@ if uploaded is not None:
         for i, col in enumerate(cols):
             if i < len(key_frames):
                 idx = i*(len(key_frames)//3)
-                col.image(key_frames[idx], use_container_width=True)
+                col.image(key_frames[idx], width=400)
 
-        # Slow Motion
         st.markdown("---")
         st.subheader("🎬 Slow Motion Replay")
         slow_speed = st.slider("Slow Motion Speed", 1, 10, 3)
@@ -174,5 +178,5 @@ if uploaded is not None:
         imageio.mimsave(gif_path.name, slow_frames, fps=10)
         with open(gif_path.name, "rb") as f:
             gif_data = f.read()
-        st.image(gif_data, caption="Slow Motion Replay", use_container_width=True)
+        st.image(gif_data, caption="Slow Motion Replay", width=600)
         os.unlink(gif_path.name)
